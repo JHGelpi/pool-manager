@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pool Manager</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%234f8cff'/%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>🏊 Pool Manager</h1>
+        <div id="statusBadge" class="badge badge-ok">● online</div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="app">
+        <!-- Tasks Tab -->
+        <section id="tab-tasks" class="tab active">
+            <div class="section-header">
+                <h2>Maintenance Tasks</h2>
+                <button id="btnAddTask" class="btn btn-primary">+ Add Task</button>
+            </div>
+            <div id="tasksLoading" class="loading"></div>
+            <div id="tasksList" class="cards-grid"></div>
+            <div id="tasksEmpty" class="empty" hidden>
+                <p>No tasks yet</p>
+                <button id="btnAddTaskEmpty" class="btn btn-primary">Create First Task</button>
+            </div>
+        </section>
+
+        <!-- Inventory Tab -->
+        <section id="tab-inventory" class="tab">
+            <div class="section-header">
+                <h2>Chemical Inventory</h2>
+                <button id="btnAddInventory" class="btn btn-primary">+ Add Item</button>
+            </div>
+            <div id="inventoryLoading" class="loading"></div>
+            <div id="inventoryList" class="cards-grid"></div>
+            <div id="inventoryEmpty" class="empty" hidden>
+                <p>No inventory items</p>
+            </div>
+        </section>
+
+        <!-- Readings Tab -->
+        <section id="tab-readings" class="tab">
+            <div class="section-header">
+                <h2>Water Readings</h2>
+            </div>
+            
+            <div class="card">
+                <form id="readingForm">
+                    <div class="form-group">
+                        <label for="readingType">Reading Type</label>
+                        <select id="readingType" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="readingValue">Value <span id="readingUnit" class="unit"></span></label>
+                        <input type="number" id="readingValue" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="readingDate">Date</label>
+                        <input type="date" id="readingDate" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Reading</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <canvas id="readingChart" height="250"></canvas>
+            </div>
+        </section>
+
+        <!-- Settings Tab -->
+        <section id="tab-settings" class="tab">
+            <div class="section-header">
+                <h2>Settings</h2>
+            </div>
+            <div class="card">
+                <div class="info-row">
+                    <span>API Status</span>
+                    <strong id="apiStatus">checking...</strong>
+                </div>
+                <div class="info-row">
+                    <span>Database</span>
+                    <strong id="dbStatus">checking...</strong>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-tab="tasks">
+            <span>📋</span>
+            <span>Tasks</span>
+        </button>
+        <button class="nav-btn" data-tab="inventory">
+            <span>🧪</span>
+            <span>Inventory</span>
+        </button>
+        <button class="nav-btn" data-tab="readings">
+            <span>📊</span>
+            <span>Readings</span>
+        </button>
+        <button class="nav-btn" data-tab="settings">
+            <span>⚙️</span>
+            <span>Settings</span>
+        </button>
+    </nav>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Task Modal -->
+    <dialog id="taskModal" class="modal">
+        <form id="taskForm">
+            <h3>Add Task</h3>
+            <div class="form-group">
+                <label for="taskName">Task Name</label>
+                <input type="text" id="taskName" required>
+            </div>
+            <div class="form-group">
+                <label for="taskDesc">Description</label>
+                <textarea id="taskDesc" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="taskFreq">Frequency (days)</label>
+                <input type="number" id="taskFreq" min="1" value="7" required>
+            </div>
+            <div class="form-group">
+                <label for="taskDue">Next Due Date</label>
+                <input type="date" id="taskDue" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" id="btnCancelTask">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
