@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: pool_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-pooluser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-poolpass}
+      POSTGRES_DB: ${DB_NAME:-pooldb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pooluser}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pool_network
+
+  api:
+    build: .
+    container_name: pool_api
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+      - ./alembic.ini:/app/alembic.ini
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-pooluser}:${DB_PASSWORD:-poolpass}@db:5432/${DB_NAME:-pooldb}
+    networks:
+      - pool_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pool_network:
+    driver: bridge
