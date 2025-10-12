@@ -33,6 +33,18 @@ function formatDate(dateStr) {
     return `${Math.abs(diffDays)} days ago`;
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getNextDueDate(frequencyDays) {
+    const date = new Date();
+    date.setDate(date.getDate() + frequencyDays);
+    return date.toISOString().split('T')[0];
+}
+
 // API functions
 async function api(endpoint, options = {}) {
     try {
@@ -61,12 +73,12 @@ function switchTab(tabName) {
     currentTab = tabName;
     
     // Update tab visibility
-    $$('.tab').forEach(tab => tab.classList.remove('active'));
-    $(`#tab-${tabName}`).classList.add('active');
+    $$('.tab').forEach(tab => tab.classList.remove('tab--active'));
+    $(`#tab-${tabName}`).classList.add('tab--active');
     
     // Update nav buttons
-    $$('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    $(`.nav-btn[data-tab="${tabName}"]`).classList.add('active');
+    $$('.tabbar-btn').forEach(btn => btn.classList.remove('tabbar-btn--active'));
+    $(`.tabbar-btn[data-tab="${tabName}"]`).classList.add('tabbar-btn--active');
     
     // Load tab data
     switch(tabName) {
@@ -85,6 +97,7 @@ async function loadTasks() {
     
     loading.style.display = 'flex';
     list.innerHTML = '';
+    list.hidden = true;
     empty.hidden = true;
     
     try {
@@ -96,15 +109,18 @@ async function loadTasks() {
             return;
         }
         
+        list.hidden = false;
         list.innerHTML = tasks.map(task => `
-            <div class="card">
-                <h3>${escapeHtml(task.name)}</h3>
-                ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
-                <div class="card-meta">
-                    <span>Every ${task.frequency_days} days</span>
-                    <span>Due ${formatDate(task.next_due_date)}</span>
+            <li>
+                <div class="card">
+                    <h3>${escapeHtml(task.name)}</h3>
+                    ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
+                    <div class="card-meta">
+                        <span>Every ${task.frequency_days} days</span>
+                        <span>Due ${formatDate(task.next_due_date)}</span>
+                    </div>
                 </div>
-            </div>
+            </li>
         `).join('');
     } catch (error) {
         loading.style.display = 'none';
@@ -112,29 +128,15 @@ async function loadTasks() {
     }
 }
 
-async function createTask(data) {
-    try {
-        await api('/tasks/', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-        showToast('Task created');
-        loadTasks();
-        return true;
-    } catch (error) {
-        showToast('Failed to create task');
-        return false;
-    }
-}
-
 // Inventory
 async function loadInventory() {
-    const loading = $('#inventoryLoading');
+    const loading = $('#invLoading');
     const list = $('#inventoryList');
     const empty = $('#inventoryEmpty');
     
     loading.style.display = 'flex';
     list.innerHTML = '';
+    list.hidden = true;
     empty.hidden = true;
     
     try {
@@ -146,18 +148,21 @@ async function loadInventory() {
             return;
         }
         
+        list.hidden = false;
         list.innerHTML = items.map(item => {
             const isLow = item.quantity_on_hand <= item.reorder_threshold;
             return `
-                <div class="card">
-                    <h3>${escapeHtml(item.name)}</h3>
-                    <div class="card-meta">
-                        <span style="color: ${isLow ? 'var(--danger)' : 'var(--success)'}">
-                            ${item.quantity_on_hand} ${item.unit}
-                        </span>
-                        <span>Reorder at ${item.reorder_threshold}</span>
+                <li>
+                    <div class="card">
+                        <h3>${escapeHtml(item.name)}</h3>
+                        <div class="card-meta">
+                            <span style="color: ${isLow ? 'var(--danger)' : 'var(--success)'}">
+                                ${item.quantity_on_hand} ${item.unit}
+                            </span>
+                            <span>Reorder at ${item.reorder_threshold}</span>
+                        </div>
                     </div>
-                </div>
+                </li>
             `;
         }).join('');
     } catch (error) {
@@ -165,60 +170,6 @@ async function loadInventory() {
         showToast('Failed to load inventory');
     }
 }
-
-// Inventory modal handlers
-document.addEventListener('DOMContentLoaded', () => {
-  const btnAddInventory = $('#btnAddInventory');
-  const btnAddInventoryEmpty = $('#btnAddInventoryEmpty');
-  const inventoryDialog = $('#inventoryDialog');
-  const inventoryForm = $('#inventoryForm');
-  const inventoryCancel = $('#inventoryCancel');
-
-  if (btnAddInventory) {
-    btnAddInventory.addEventListener('click', () => {
-      inventoryDialog.showModal();
-      $('#invName').focus();
-    });
-  }
-
-  if (btnAddInventoryEmpty) {
-    btnAddInventoryEmpty.addEventListener('click', () => {
-      inventoryDialog.showModal();
-      $('#invName').focus();
-    });
-  }
-
-  if (inventoryCancel) {
-    inventoryCancel.addEventListener('click', () => {
-      inventoryDialog.close();
-      inventoryForm.reset();
-    });
-  }
-
-  if (inventoryForm) {
-    inventoryForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const data = {
-        name: $('#invName').value.trim(),
-        quantity_on_hand: parseFloat($('#invQuantity').value),
-        unit: $('#invUnit').value.trim(),
-        reorder_threshold: parseFloat($('#invThreshold').value)
-      };
-
-      try {
-        await api.json('POST', '/inventory/', data);
-        showToast('Inventory item added');
-        inventoryDialog.close();
-        inventoryForm.reset();
-        loadInventory();
-      } catch (error) {
-        showToast('Failed to add item');
-        console.error(error);
-      }
-    });
-  }
-});
 
 // Readings
 async function loadReadingTypes() {
@@ -256,15 +207,12 @@ function renderChart(slug, readings) {
     const canvas = $('#readingChart');
     const ctx = canvas.getContext('2d');
     
-    // Find reading type info
     const typeInfo = readingTypes.find(t => t.slug === slug) || {};
     
-    // Destroy existing chart
     if (currentChart) {
         currentChart.destroy();
     }
     
-    // Create new chart
     currentChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -300,109 +248,128 @@ function renderChart(slug, readings) {
     });
 }
 
-async function createReading(data) {
-    try {
-        await api('/readings/', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-        showToast('Reading saved');
-        loadReadings();
-        return true;
-    } catch (error) {
-        showToast('Failed to save reading');
-        return false;
-    }
-}
-
 // Health check
 async function checkHealth() {
     try {
         await api('/health');
         $('#apiStatus').textContent = 'Connected';
-        $('#statusBadge').className = 'badge badge-ok';
-        $('#statusBadge').textContent = '● online';
-        
-        await api('/readyz');
-        $('#dbStatus').textContent = 'Connected';
+        $('#onlineBadge').className = 'badge badge--ok';
+        $('#onlineBadge').textContent = '● online';
     } catch (error) {
         $('#apiStatus').textContent = 'Disconnected';
-        $('#dbStatus').textContent = 'Disconnected';
-        $('#statusBadge').className = 'badge badge-error';
-        $('#statusBadge').textContent = '● offline';
+        $('#onlineBadge').className = 'badge badge--err';
+        $('#onlineBadge').textContent = '● offline';
     }
-}
-
-// Utility
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function getNextDueDate(frequencyDays) {
-    const date = new Date();
-    date.setDate(date.getDate() + frequencyDays);
-    return date.toISOString().split('T')[0];
 }
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Navigation
-    $$('.nav-btn').forEach(btn => {
+    $$('.tabbar-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             switchTab(btn.dataset.tab);
         });
     });
     
     // Task modal
-    $('#btnAddTask').addEventListener('click', () => {
-        $('#taskModal').showModal();
-        $('#taskDue').value = getNextDueDate(7);
+    const taskDialog = $('#taskDialog');
+    const taskForm = $('#taskForm');
+    
+    $('#btnAddTask')?.addEventListener('click', () => {
+        taskDialog.showModal();
+        taskForm.querySelector('[name="next_due_date"]').value = getNextDueDate(7);
     });
     
-    $('#btnAddTaskEmpty').addEventListener('click', () => {
-        $('#taskModal').showModal();
-        $('#taskDue').value = getNextDueDate(7);
+    $('#btnAddTaskEmpty')?.addEventListener('click', () => {
+        taskDialog.showModal();
+        taskForm.querySelector('[name="next_due_date"]').value = getNextDueDate(7);
     });
     
-    $('#btnCancelTask').addEventListener('click', () => {
-        $('#taskModal').close();
-        $('#taskForm').reset();
+    $('#taskCancel')?.addEventListener('click', () => {
+        taskDialog.close();
+        taskForm.reset();
     });
     
-    $('#taskForm').addEventListener('submit', async (e) => {
+    taskForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         
         const data = {
-            name: formData.get('taskName') || $('#taskName').value,
-            description: formData.get('taskDesc') || $('#taskDesc').value || null,
-            frequency_days: parseInt(formData.get('taskFreq') || $('#taskFreq').value),
-            next_due_date: formData.get('taskDue') || $('#taskDue').value
+            name: formData.get('name'),
+            description: formData.get('description') || null,
+            frequency_days: parseInt(formData.get('frequency_days')),
+            next_due_date: formData.get('next_due_date')
         };
         
-        const success = await createTask(data);
-        if (success) {
-            $('#taskModal').close();
-            $('#taskForm').reset();
+        try {
+            await api('/tasks/', { method: 'POST', body: JSON.stringify(data) });
+            showToast('Task created');
+            taskDialog.close();
+            taskForm.reset();
+            loadTasks();
+        } catch (error) {
+            showToast('Failed to create task');
         }
     });
     
     // Update due date when frequency changes
-    $('#taskFreq').addEventListener('input', (e) => {
-        $('#taskDue').value = getNextDueDate(parseInt(e.target.value) || 7);
+    taskForm?.querySelector('[name="frequency_days"]')?.addEventListener('input', (e) => {
+        taskForm.querySelector('[name="next_due_date"]').value = getNextDueDate(parseInt(e.target.value) || 7);
+    });
+    
+    // Inventory modal
+    const inventoryDialog = $('#inventoryDialog');
+    const inventoryForm = $('#inventoryForm');
+    
+    $('#btnAddInventory')?.addEventListener('click', () => {
+        inventoryDialog.showModal();
+        $('#invName').focus();
+    });
+    
+    $('#btnAddInventoryEmpty')?.addEventListener('click', () => {
+        inventoryDialog.showModal();
+        $('#invName').focus();
+    });
+    
+    $('#inventoryCancel')?.addEventListener('click', () => {
+        inventoryDialog.close();
+        inventoryForm.reset();
+    });
+    
+    inventoryForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            name: $('#invName').value.trim(),
+            quantity_on_hand: parseFloat($('#invQuantity').value),
+            unit: $('#invUnit').value.trim(),
+            reorder_threshold: parseFloat($('#invThreshold').value)
+        };
+        
+        try {
+            await api('/inventory/', { method: 'POST', body: JSON.stringify(data) });
+            showToast('Inventory item added');
+            inventoryDialog.close();
+            inventoryForm.reset();
+            loadInventory();
+        } catch (error) {
+            showToast('Failed to add item');
+            console.error(error);
+        }
     });
     
     // Reading form
-    $('#readingType').addEventListener('change', () => {
+    $('#readingType')?.addEventListener('change', () => {
         updateReadingUnit();
         loadReadings();
     });
     
-    $('#readingDate').value = new Date().toISOString().split('T')[0];
+    const readingDate = $('#readingDate');
+    if (readingDate) {
+        readingDate.value = new Date().toISOString().split('T')[0];
+    }
     
-    $('#readingForm').addEventListener('submit', async (e) => {
+    $('#readingForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const data = {
@@ -411,9 +378,13 @@ document.addEventListener('DOMContentLoaded', () => {
             reading_date: $('#readingDate').value
         };
         
-        const success = await createReading(data);
-        if (success) {
+        try {
+            await api('/readings/', { method: 'POST', body: JSON.stringify(data) });
+            showToast('Reading saved');
+            loadReadings();
             $('#readingValue').value = '';
+        } catch (error) {
+            showToast('Failed to save reading');
         }
     });
     
