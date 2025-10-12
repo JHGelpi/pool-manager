@@ -108,12 +108,19 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.card p {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    margin-bottom: 0.75rem;
+}
+
 .card-meta {
     color: var(--text-muted);
     font-size: 0.875rem;
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
+    margin-top: 0.75rem;
 }
 
 /* Buttons */
@@ -137,12 +144,23 @@ body {
 .btn-primary {
     background: var(--primary);
     border-color: var(--primary);
-    color: #0b1020;
+    color: white;
 }
 
 .btn-primary:hover {
     background: #6ba0ff;
     border-color: #6ba0ff;
+}
+
+.btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #ff8fa3;
+    border-color: #ff8fa3;
 }
 
 /* Forms */
@@ -167,6 +185,14 @@ body {
     padding: 0.625rem;
     border-radius: 8px;
     font-size: 0.9375rem;
+    font-family: inherit;
+}
+
+/* Dropdown options styling */
+.form-group select option {
+    background: #0b1020;
+    color: #e5ecff;
+    padding: 0.5rem;
 }
 
 .form-group input:focus,
@@ -209,15 +235,11 @@ body {
 
 /* Loading */
 .loading {
-    height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 3rem 1rem;
     color: var(--text-muted);
-}
-
-.loading::after {
-    content: "Loading...";
 }
 
 /* Modal */
@@ -228,6 +250,7 @@ body {
     padding: 0;
     width: min(500px, 90vw);
     box-shadow: 0 20px 60px var(--shadow);
+    color: var(--text);
 }
 
 .modal::backdrop {
@@ -322,6 +345,12 @@ body {
 @media (max-width: 768px) {
     .cards-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
     }
     
     .section-header h2 {
