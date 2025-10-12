@@ -1,147 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pool Manager</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%234f8cff'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%234f8cff'/%3E%3C/svg%3E">
+  <meta charset="utf-8" />
+  <title>Pool Care</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <h1>🏊 Pool Manager</h1>
-        <div id="statusBadge" class="badge badge-ok">● online</div>
-    </header>
+  <header class="app-header">
+    <h1>Pool Care</h1>
+    <div id="onlineBadge" class="badge badge--ok" title="API connected">● online</div>
+  </header>
 
-    <!-- Main Content -->
-    <main id="app">
-        <!-- Tasks Tab -->
-        <section id="tab-tasks" class="tab active">
-            <div class="section-header">
-                <h2>Maintenance Tasks</h2>
-                <button id="btnAddTask" class="btn btn-primary">+ Add Task</button>
-            </div>
-            <div id="tasksLoading" class="loading"></div>
-            <div id="tasksList" class="cards-grid"></div>
-            <div id="tasksEmpty" class="empty" hidden>
-                <p>No tasks yet</p>
-                <button id="btnAddTaskEmpty" class="btn btn-primary">Create First Task</button>
-            </div>
-        </section>
+  <main id="view">
+    <!-- Tasks -->
+    <section id="tab-tasks" class="tab tab--active" role="region" aria-labelledby="nav-tasks">
+      <div class="section-head">
+        <h2>Tasks</h2>
+        <button id="btnAddTask" class="btn btn-primary">Add Task</button>
+      </div>
 
-        <!-- Inventory Tab -->
-        <section id="tab-inventory" class="tab">
-            <div class="section-header">
-                <h2>Chemical Inventory</h2>
-                <button id="btnAddInventory" class="btn btn-primary">+ Add Item</button>
-            </div>
-            <div id="inventoryLoading" class="loading"></div>
-            <div id="inventoryList" class="cards-grid"></div>
-            <div id="inventoryEmpty" class="empty" hidden>
-                <p>No inventory items</p>
-            </div>
-        </section>
+      <div id="tasksLoading" class="skeleton-list">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
 
-        <!-- Readings Tab -->
-        <section id="tab-readings" class="tab">
-            <div class="section-header">
-                <h2>Water Readings</h2>
-            </div>
-            
-            <div class="card">
-                <form id="readingForm">
-                    <div class="form-group">
-                        <label for="readingType">Reading Type</label>
-                        <select id="readingType" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="readingValue">Value <span id="readingUnit" class="unit"></span></label>
-                        <input type="number" id="readingValue" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="readingDate">Date</label>
-                        <input type="date" id="readingDate" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Save Reading</button>
-                </form>
-            </div>
+      <ul id="tasksList" class="card-list" hidden></ul>
 
-            <div class="card">
-                <canvas id="readingChart" height="250"></canvas>
-            </div>
-        </section>
+      <div id="tasksEmpty" class="empty" hidden>
+        <p>No tasks yet.</p>
+        <button id="btnAddTaskEmpty" class="btn btn-primary btn-lg">Create your first task</button>
+      </div>
+    </section>
 
-        <!-- Settings Tab -->
-        <section id="tab-settings" class="tab">
-            <div class="section-header">
-                <h2>Settings</h2>
-            </div>
-            <div class="card">
-                <div class="info-row">
-                    <span>API Status</span>
-                    <strong id="apiStatus">checking...</strong>
-                </div>
-                <div class="info-row">
-                    <span>Database</span>
-                    <strong id="dbStatus">checking...</strong>
-                </div>
-            </div>
-        </section>
-    </main>
+    <!-- Inventory -->
+    <section id="tab-inventory" class="tab" role="region" aria-labelledby="nav-inventory">
+      <div class="section-head">
+        <h2>Inventory</h2>
+        <button id="btnAddInventory" class="btn btn-primary">Add Item</button>
+      </div>
+      <div id="invLoading" class="skeleton-list">
+        <div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+      <ul id="inventoryList" class="card-list" hidden></ul>
+      <div id="inventoryEmpty" class="empty" hidden>
+        <p>No items in inventory.</p>
+        <button id="btnAddInventoryEmpty" class="btn btn-primary">Add First Item</button>
+      </div>
+    </section>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <button class="nav-btn active" data-tab="tasks">
-            <span>📋</span>
-            <span>Tasks</span>
-        </button>
-        <button class="nav-btn" data-tab="inventory">
-            <span>🧪</span>
-            <span>Inventory</span>
-        </button>
-        <button class="nav-btn" data-tab="readings">
-            <span>📊</span>
-            <span>Readings</span>
-        </button>
-        <button class="nav-btn" data-tab="settings">
-            <span>⚙️</span>
-            <span>Settings</span>
-        </button>
-    </nav>
+    <!-- Readings -->
+    <section id="tab-readings" class="tab" role="region" aria-labelledby="nav-readings">
+      <div class="section-head">
+        <h2>Readings</h2>
+      </div>
 
-    <!-- Toast Notifications -->
-    <div id="toast" class="toast"></div>
+      <form id="readingForm" class="card" style="margin-bottom:12px">
+        <div class="row">
+          <label for="readingType">Type</label>
+          <select id="readingType" required></select>
+        </div>
+        <div class="row">
+          <label for="readingDate">Date</label>
+          <input id="readingDate" type="date" required />
+        </div>
+        <div class="row">
+          <label for="readingValue">Value</label>
+          <div style="display:flex; gap:8px; align-items:center">
+            <input id="readingValue" type="number" step="0.01" inputmode="decimal" required />
+            <span id="readingUnit" class="meta"></span>
+          </div>
+        </div>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
 
-    <!-- Task Modal -->
-    <dialog id="taskModal" class="modal">
-        <form id="taskForm">
-            <h3>Add Task</h3>
-            <div class="form-group">
-                <label for="taskName">Task Name</label>
-                <input type="text" id="taskName" required>
-            </div>
-            <div class="form-group">
-                <label for="taskDesc">Description</label>
-                <textarea id="taskDesc" rows="2"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="taskFreq">Frequency (days)</label>
-                <input type="number" id="taskFreq" min="1" value="7" required>
-            </div>
-            <div class="form-group">
-                <label for="taskDue">Next Due Date</label>
-                <input type="date" id="taskDue" required>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn" id="btnCancelTask">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
-            </div>
-        </form>
-    </dialog>
+      <div class="card">
+        <canvas id="readingChart" height="220"></canvas>
+      </div>
+    </section>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="/static/js/app.js"></script>
+    <!-- Settings -->
+    <section id="tab-settings" class="tab" role="region" aria-labelledby="nav-settings">
+      <div class="section-head">
+        <h2>Settings</h2>
+      </div>
+      <div class="card">
+        <div class="row">
+          <span>API Health</span>
+          <strong id="apiStatus">unknown</strong>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Task Modal -->
+  <dialog id="taskDialog" class="sheet">
+    <form id="taskForm" method="dialog">
+      <h3>Add Task</h3>
+      <label class="field">
+        <span>Name*</span>
+        <input name="name" required maxlength="80" placeholder="e.g., Shock the pool" />
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <textarea name="description" rows="2" placeholder="Optional"></textarea>
+      </label>
+      <label class="field">
+        <span>Next due date*</span>
+        <input name="next_due_date" type="date" required />
+        <small class="hint" id="nextDueHint"></small>
+      </label>
+      <label class="field">
+        <span>Frequency (days)*</span>
+        <input name="frequency_days" type="number" min="1" step="1" required value="7" />
+      </label>
+      <menu class="sheet-actions">
+        <button type="button" id="taskCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Add Inventory Modal -->
+  <dialog id="inventoryDialog" class="sheet">
+    <form id="inventoryForm" method="dialog">
+      <h3>Add Inventory Item</h3>
+      <label class="field">
+        <span>Chemical Name*</span>
+        <input name="name" id="invName" required maxlength="80" placeholder="e.g., Chlorine Tablets" />
+      </label>
+      <label class="field">
+        <span>Quantity on Hand*</span>
+        <input name="quantity_on_hand" id="invQuantity" type="number" step="0.1" min="0" required />
+      </label>
+      <label class="field">
+        <span>Unit*</span>
+        <input name="unit" id="invUnit" required maxlength="20" placeholder="e.g., lbs, gallons, tablets" />
+      </label>
+      <label class="field">
+        <span>Reorder Threshold*</span>
+        <input name="reorder_threshold" id="invThreshold" type="number" step="0.1" min="0" required />
+      </label>
+      <menu class="sheet-actions">
+        <button type="button" id="inventoryCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Bottom nav -->
+  <nav class="tabbar" aria-label="Primary">
+    <button id="nav-tasks" data-tab="tasks" class="tabbar-btn tabbar-btn--active">Tasks</button>
+    <button id="nav-inventory" data-tab="inventory" class="tabbar-btn">Inventory</button>
+    <button id="nav-readings" data-tab="readings" class="tabbar-btn">Readings</button>
+    <button id="nav-settings" data-tab="settings" class="tabbar-btn">Settings</button>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script defer src="/static/js/app.js"></script>
+
 </body>
 </html>
+EOF

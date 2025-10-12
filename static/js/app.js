@@ -166,6 +166,60 @@ async function loadInventory() {
     }
 }
 
+// Inventory modal handlers
+document.addEventListener('DOMContentLoaded', () => {
+  const btnAddInventory = $('#btnAddInventory');
+  const btnAddInventoryEmpty = $('#btnAddInventoryEmpty');
+  const inventoryDialog = $('#inventoryDialog');
+  const inventoryForm = $('#inventoryForm');
+  const inventoryCancel = $('#inventoryCancel');
+
+  if (btnAddInventory) {
+    btnAddInventory.addEventListener('click', () => {
+      inventoryDialog.showModal();
+      $('#invName').focus();
+    });
+  }
+
+  if (btnAddInventoryEmpty) {
+    btnAddInventoryEmpty.addEventListener('click', () => {
+      inventoryDialog.showModal();
+      $('#invName').focus();
+    });
+  }
+
+  if (inventoryCancel) {
+    inventoryCancel.addEventListener('click', () => {
+      inventoryDialog.close();
+      inventoryForm.reset();
+    });
+  }
+
+  if (inventoryForm) {
+    inventoryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        name: $('#invName').value.trim(),
+        quantity_on_hand: parseFloat($('#invQuantity').value),
+        unit: $('#invUnit').value.trim(),
+        reorder_threshold: parseFloat($('#invThreshold').value)
+      };
+
+      try {
+        await api.json('POST', '/inventory/', data);
+        showToast('Inventory item added');
+        inventoryDialog.close();
+        inventoryForm.reset();
+        loadInventory();
+      } catch (error) {
+        showToast('Failed to add item');
+        console.error(error);
+      }
+    });
+  }
+});
+
 // Readings
 async function loadReadingTypes() {
     try {
