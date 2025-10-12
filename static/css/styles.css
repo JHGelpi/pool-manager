@@ -356,4 +356,37 @@ body {
     .section-header h2 {
         font-size: 1.25rem;
     }
+    
+    /* Make table scrollable on mobile */
+    #taskHistoryTable {
+        overflow-x: auto;
+    }
+    
+    #taskHistoryTable table {
+        min-width: 500px;
+    }
+}
+
+/* Task Details */
+.task-details h3 {
+    margin-bottom: 0.5rem;
+}
+
+/* Table styling */
+table {
+    color: var(--text);
+}
+
+table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+table td {
+    font-size: 0.9375rem;
+}
+
+table tr:last-child {
+    border-bottom: none !important;
 }

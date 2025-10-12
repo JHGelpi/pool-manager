@@ -5,6 +5,9 @@ const API_BASE = '';
 let currentTab = 'tasks';
 let readingTypes = [];
 let currentChart = null;
+let allTasks = [];
+let selectedTask = null;
+let taskCompletionHistory = [];
 
 // Utility functions - $ returns ONE element, $$ returns ALL matching elements
 function $(selector) {
@@ -135,63 +138,187 @@ function switchTab(tabName) {
 async function loadTasks() {
     console.log('Loading tasks...');
     const loading = $('#tasksLoading');
-    const list = $('#tasksList');
+    const taskSelect = $('#taskSelect');
     const empty = $('#tasksEmpty');
+    const taskDetailsCard = $('#taskDetailsCard');
+    const taskHistoryCard = $('#taskHistoryCard');
+    const taskSelectContainer = taskSelect?.parentElement?.parentElement;
     
-    if (!loading || !list || !empty) {
-        console.error('Task elements not found');
+    if (!loading) {
+        console.error('Loading element not found');
         return;
     }
     
     loading.style.display = 'flex';
-    list.innerHTML = '';
-    list.style.display = 'none';
-    empty.style.display = 'none';
+    
+    // Hide other elements while loading
+    if (empty) empty.style.display = 'none';
+    if (taskDetailsCard) taskDetailsCard.style.display = 'none';
+    if (taskHistoryCard) taskHistoryCard.style.display = 'none';
+    if (taskSelectContainer) taskSelectContainer.style.display = 'none';
     
     try {
-        const tasks = await api('/tasks/');
-        console.log('Loaded tasks:', tasks.length);
+        allTasks = await api('/tasks/');
+        console.log('Loaded tasks:', allTasks.length);
         loading.style.display = 'none';
         
-        if (!tasks || tasks.length === 0) {
-            empty.style.display = 'block';
+        if (!allTasks || allTasks.length === 0) {
+            if (empty) empty.style.display = 'block';
             return;
         }
         
-        list.style.display = 'grid';
-        list.innerHTML = tasks.map(task => {
-            const dueDate = new Date(task.next_due_date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            dueDate.setHours(0, 0, 0, 0);
-            
-            const isOverdue = dueDate < today;
-            const isDueToday = dueDate.getTime() === today.getTime();
-            
-            let dueBadge = '';
-            if (isOverdue) {
-                dueBadge = '<span style="color: var(--danger); font-weight: 600;">⚠ Overdue</span>';
-            } else if (isDueToday) {
-                dueBadge = '<span style="color: var(--warning); font-weight: 600;">⚡ Due today</span>';
-            }
-            
-            return `
-                <div class="card">
-                    <h3>${escapeHtml(task.name)}</h3>
-                    ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
-                    <div class="card-meta">
-                        <span>Every ${task.frequency_days} days</span>
-                        <span>Due: ${formatDate(task.next_due_date)}</span>
-                    </div>
-                    ${dueBadge}
-                </div>
-            `;
-        }).join('');
+        // Show the select container
+        if (taskSelectContainer) taskSelectContainer.style.display = 'block';
+        
+        // Populate dropdown
+        if (taskSelect) {
+            taskSelect.innerHTML = '<option value="">Select a task...</option>' +
+                allTasks.map(task => {
+                    const dueDate = new Date(task.next_due_date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    dueDate.setHours(0, 0, 0, 0);
+                    const isOverdue = dueDate < today;
+                    const indicator = isOverdue ? '⚠ ' : '';
+                    return `<option value="${task.id}">${indicator}${escapeHtml(task.name)}</option>`;
+                }).join('');
+        }
+        
     } catch (error) {
         console.error('Failed to load tasks:', error);
         loading.style.display = 'none';
         showToast('Failed to load tasks: ' + error.message);
-        empty.style.display = 'block';
+        if (empty) empty.style.display = 'block';
+    }
+}
+
+async function selectTask(taskId) {
+    if (!taskId) {
+        $('#taskDetailsCard').style.display = 'none';
+        $('#taskHistoryCard').style.display = 'none';
+        selectedTask = null;
+        return;
+    }
+    
+    selectedTask = allTasks.find(t => t.id === taskId);
+    if (!selectedTask) return;
+    
+    // Show task details
+    const detailsCard = $('#taskDetailsCard');
+    detailsCard.style.display = 'block';
+    
+    $('#taskDetailName').textContent = selectedTask.name;
+    $('#taskDetailDescription').textContent = selectedTask.description || '';
+    $('#taskDetailDescription').style.display = selectedTask.description ? 'block' : 'none';
+    $('#taskDetailFrequency').textContent = `Every ${selectedTask.frequency_days} days`;
+    $('#taskDetailNextDue').textContent = formatDate(selectedTask.next_due_date);
+    
+    if (selectedTask.last_completed_date) {
+        const lastDate = new Date(selectedTask.last_completed_date);
+        const today = new Date();
+        const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+        
+        $('#taskDetailLastCompleted').textContent = formatDate(selectedTask.last_completed_date);
+        $('#taskDetailDaysSince').textContent = daysSince + ' days';
+        
+        // Color code based on frequency
+        const daysSinceEl = $('#taskDetailDaysSince');
+        if (daysSince >= selectedTask.frequency_days) {
+            daysSinceEl.style.color = 'var(--danger)';
+        } else if (daysSince >= selectedTask.frequency_days * 0.8) {
+            daysSinceEl.style.color = 'var(--warning)';
+        } else {
+            daysSinceEl.style.color = 'var(--success)';
+        }
+    } else {
+        $('#taskDetailLastCompleted').textContent = 'Never';
+        $('#taskDetailDaysSince').textContent = 'N/A';
+    }
+    
+    // Load completion history
+    await loadTaskHistory(taskId);
+}
+
+async function loadTaskHistory(taskId) {
+    const historyCard = $('#taskHistoryCard');
+    const historyBody = $('#taskHistoryBody');
+    const historyEmpty = $('#taskHistoryEmpty');
+    
+    if (!historyCard || !historyBody || !historyEmpty) return;
+    
+    try {
+        // For now, we'll create mock history based on last_completed_date
+        // In a real implementation, you'd fetch from an endpoint like /tasks/{id}/history
+        
+        // Get the full task details to see completion history
+        const task = await api(`/tasks/${taskId}`);
+        
+        historyCard.style.display = 'block';
+        
+        // Create history entries (this is simplified - you'll want a proper history endpoint)
+        const history = [];
+        
+        if (task.last_completed_date) {
+            history.push({
+                date: task.last_completed_date,
+                notes: task.last_completion_notes || 'No notes',
+                days_between: null // First entry
+            });
+        }
+        
+        if (history.length === 0) {
+            historyEmpty.style.display = 'block';
+            historyBody.innerHTML = '';
+        } else {
+            historyEmpty.style.display = 'none';
+            historyBody.innerHTML = history.map((entry, index) => {
+                let daysBetween = 'N/A';
+                if (entry.days_between !== null) {
+                    daysBetween = `${entry.days_between} days`;
+                }
+                
+                return `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 0.75rem 0.5rem;">${formatDate(entry.date)}</td>
+                        <td style="padding: 0.75rem 0.5rem; color: var(--text-muted);">${daysBetween}</td>
+                        <td style="padding: 0.75rem 0.5rem; color: var(--text-muted);">${escapeHtml(entry.notes)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+    } catch (error) {
+        console.error('Failed to load task history:', error);
+        showToast('Failed to load history');
+    }
+}
+
+async function completeTask() {
+    if (!selectedTask) return;
+    
+    const dialog = $('#completeTaskDialog');
+    if (dialog) dialog.showModal();
+}
+
+async function submitTaskCompletion(notes) {
+    if (!selectedTask) return;
+    
+    try {
+        const data = { notes: notes || null };
+        await api(`/tasks/${selectedTask.id}/complete`, { 
+            method: 'POST', 
+            body: JSON.stringify(data) 
+        });
+        
+        showToast('✓ Task marked as completed');
+        
+        // Reload tasks and reselect current task
+        await loadTasks();
+        await selectTask(selectedTask.id);
+        
+    } catch (error) {
+        console.error('Failed to complete task:', error);
+        showToast('Failed to complete task');
     }
 }
 
@@ -414,6 +541,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Task select dropdown
+    const taskSelect = $('#taskSelect');
+    if (taskSelect) {
+        taskSelect.addEventListener('change', function(e) {
+            selectTask(e.target.value);
+        });
+    }
+    
+    // Complete task button
+    const btnCompleteTask = $('#btnCompleteTask');
+    if (btnCompleteTask) {
+        btnCompleteTask.addEventListener('click', function() {
+            completeTask();
+        });
+    }
+    
+    // Complete task dialog
+    const completeTaskDialog = $('#completeTaskDialog');
+    const completeTaskForm = $('#completeTaskForm');
+    
+    const completeTaskCancel = $('#completeTaskCancel');
+    if (completeTaskCancel) {
+        completeTaskCancel.addEventListener('click', function() {
+            if (completeTaskDialog) completeTaskDialog.close();
+            if (completeTaskForm) completeTaskForm.reset();
+        });
+    }
+    
+    if (completeTaskForm) {
+        completeTaskForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const notes = $('#completionNotes').value;
+            
+            await submitTaskCompletion(notes);
+            
+            if (completeTaskDialog) completeTaskDialog.close();
+            if (completeTaskForm) completeTaskForm.reset();
+        });
+    }
+    
     // Task modal
     const taskDialog = $('#taskDialog');
     const taskForm = $('#taskForm');
@@ -471,14 +638,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 next_due_date: formData.get('next_due_date')
             };
             
+            console.log('Creating task:', data);
+            
             try {
-                await api('/tasks/', { method: 'POST', body: JSON.stringify(data) });
+                const newTask = await api('/tasks/', { method: 'POST', body: JSON.stringify(data) });
+                console.log('Task created:', newTask);
                 showToast('✓ Task created successfully');
                 if (taskDialog) taskDialog.close();
                 if (taskForm) taskForm.reset();
-                loadTasks();
+                await loadTasks();
+                
+                // Auto-select the newly created task
+                if (newTask && newTask.id) {
+                    const taskSelect = $('#taskSelect');
+                    if (taskSelect) {
+                        taskSelect.value = newTask.id;
+                        await selectTask(newTask.id);
+                    }
+                }
             } catch (error) {
-                showToast('Failed to create task');
+                showToast('Failed to create task: ' + error.message);
                 console.error(error);
             }
         });

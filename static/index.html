@@ -20,11 +20,67 @@
         <button id="btnAddTask" class="btn btn-primary">+ Add Task</button>
       </div>
 
+      <div class="card" style="margin-bottom: 1rem;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="taskSelect">Select Task</label>
+          <select id="taskSelect">
+            <option value="">Select a task...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="taskDetailsCard" class="card" style="display: none;">
+        <div class="task-details">
+          <h3 id="taskDetailName"></h3>
+          <p id="taskDetailDescription" style="color: var(--text-muted); margin-bottom: 1rem;"></p>
+          
+          <div class="info-row">
+            <span>Frequency</span>
+            <strong id="taskDetailFrequency"></strong>
+          </div>
+          <div class="info-row">
+            <span>Last Completed</span>
+            <strong id="taskDetailLastCompleted">Never</strong>
+          </div>
+          <div class="info-row">
+            <span>Days Since Last</span>
+            <strong id="taskDetailDaysSince">N/A</strong>
+          </div>
+          <div class="info-row">
+            <span>Next Due Date</span>
+            <strong id="taskDetailNextDue"></strong>
+          </div>
+        </div>
+
+        <button id="btnCompleteTask" class="btn btn-primary" style="margin-top: 1rem; width: 100%;">
+          Mark as Completed Today
+        </button>
+      </div>
+
+      <div id="taskHistoryCard" class="card" style="display: none;">
+        <h3 style="margin-bottom: 1rem;">Completion History</h3>
+        <div id="taskHistoryTable">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border);">
+                <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Date</th>
+                <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Days Between</th>
+                <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="taskHistoryBody">
+            </tbody>
+          </table>
+        </div>
+        <div id="taskHistoryEmpty" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          No completion history yet. Complete this task to start tracking!
+        </div>
+      </div>
+
       <div id="tasksLoading" class="loading">Loading tasks...</div>
-      <div id="tasksList" class="cards-grid"></div>
       <div id="tasksEmpty" class="empty" style="display: none;">
-        <p>No maintenance tasks yet</p>
-        <button id="btnAddTaskEmpty" class="btn btn-primary">Create First Task</button>
+        <p>No tasks yet.</p>
+        <button id="btnAddTaskEmpty" class="btn btn-primary btn-lg">Create your first task</button>
       </div>
     </section>
 
@@ -165,6 +221,23 @@
     </form>
   </dialog>
 
+  <!-- Complete Task Dialog -->
+  <dialog id="completeTaskDialog" class="modal">
+    <form id="completeTaskForm">
+      <h3>Complete Task</h3>
+
+      <div class="form-group">
+        <label for="completionNotes">Notes (optional)</label>
+        <textarea id="completionNotes" name="notes" rows="4" placeholder="Any observations or reminders for next time..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="completeTaskCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Completion</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-tab="tasks">
@@ -189,6 +262,6 @@
   <div id="toast" class="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="./js/app.js?v=2"></script>
+  <script src="./js/app.js?v=4"></script>
 </body>
 </html>
