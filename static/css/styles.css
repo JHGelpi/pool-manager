@@ -163,6 +163,17 @@ body {
     border-color: #ff8fa3;
 }
 
+.btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #ff8fa3;
+    border-color: #ff8fa3;
+}
+
 /* Forms */
 .form-group {
     margin-bottom: 1rem;

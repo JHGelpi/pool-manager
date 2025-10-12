@@ -322,6 +322,83 @@ async function submitTaskCompletion(notes) {
     }
 }
 
+function editTask() {
+    if (!selectedTask) return;
+    
+    const dialog = $('#editTaskDialog');
+    if (!dialog) return;
+    
+    // Populate form with current task data
+    $('#editTaskName').value = selectedTask.name;
+    $('#editTaskDescription').value = selectedTask.description || '';
+    $('#editTaskFrequency').value = selectedTask.frequency_days;
+    $('#editTaskDueDate').value = selectedTask.next_due_date;
+    
+    dialog.showModal();
+}
+
+async function submitTaskEdit(formData) {
+    if (!selectedTask) return;
+    
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description') || null,
+        frequency_days: parseInt(formData.get('frequency_days')),
+        next_due_date: formData.get('next_due_date')
+    };
+    
+    console.log('Updating task:', data);
+    
+    try {
+        await api(`/tasks/${selectedTask.id}`, { 
+            method: 'PUT', 
+            body: JSON.stringify(data) 
+        });
+        
+        showToast('✓ Task updated successfully');
+        
+        // Reload tasks and reselect
+        await loadTasks();
+        await selectTask(selectedTask.id);
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to update task:', error);
+        
+        if (error.message.includes('409') || error.message.includes('unique') || error.message.includes('duplicate')) {
+            showToast('⚠ A task with this name already exists');
+        } else {
+            showToast('Failed to update task: ' + error.message);
+        }
+        
+        return false;
+    }
+}
+
+async function deleteTask() {
+    if (!selectedTask) return;
+    
+    const confirmDelete = confirm(`Are you sure you want to delete "${selectedTask.name}"? This cannot be undone.`);
+    if (!confirmDelete) return;
+    
+    try {
+        await api(`/tasks/${selectedTask.id}`, { method: 'DELETE' });
+        
+        showToast('✓ Task deleted');
+        
+        // Close dialog and reload tasks
+        const dialog = $('#editTaskDialog');
+        if (dialog) dialog.close();
+        
+        selectedTask = null;
+        await loadTasks();
+        
+    } catch (error) {
+        console.error('Failed to delete task:', error);
+        showToast('Failed to delete task');
+    }
+}
+
 // Inventory
 async function loadInventory() {
     console.log('Loading inventory...');
@@ -557,6 +634,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Edit task button
+    const btnEditTask = $('#btnEditTask');
+    if (btnEditTask) {
+        btnEditTask.addEventListener('click', function() {
+            editTask();
+        });
+    }
+    
+    // Edit task dialog
+    const editTaskDialog = $('#editTaskDialog');
+    const editTaskForm = $('#editTaskForm');
+    
+    const editTaskCancel = $('#editTaskCancel');
+    if (editTaskCancel) {
+        editTaskCancel.addEventListener('click', function() {
+            if (editTaskDialog) editTaskDialog.close();
+        });
+    }
+    
+    const editTaskDelete = $('#editTaskDelete');
+    if (editTaskDelete) {
+        editTaskDelete.addEventListener('click', async function() {
+            await deleteTask();
+        });
+    }
+    
+    if (editTaskForm) {
+        editTaskForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            const success = await submitTaskEdit(formData);
+            if (success && editTaskDialog) {
+                editTaskDialog.close();
+            }
+        });
+    }
+    
     // Complete task dialog
     const completeTaskDialog = $('#completeTaskDialog');
     const completeTaskForm = $('#completeTaskForm');
@@ -657,8 +772,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             } catch (error) {
-                showToast('Failed to create task: ' + error.message);
-                console.error(error);
+                console.error('Task creation error:', error);
+                
+                // Check if it's a duplicate name error
+                if (error.message.includes('409') || error.message.includes('unique') || error.message.includes('duplicate')) {
+                    showToast('⚠ A task with this name already exists');
+                } else {
+                    showToast('Failed to create task: ' + error.message);
+                }
             }
         });
     }

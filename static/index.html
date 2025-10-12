@@ -52,9 +52,14 @@
           </div>
         </div>
 
-        <button id="btnCompleteTask" class="btn btn-primary" style="margin-top: 1rem; width: 100%;">
-          Mark as Completed Today
-        </button>
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+          <button id="btnCompleteTask" class="btn btn-primary" style="flex: 1;">
+            Mark as Completed Today
+          </button>
+          <button id="btnEditTask" class="btn" style="flex: 1;">
+            Edit Task
+          </button>
+        </div>
       </div>
 
       <div id="taskHistoryCard" class="card" style="display: none;">
@@ -221,6 +226,40 @@
     </form>
   </dialog>
 
+  <!-- Edit Task Dialog -->
+  <dialog id="editTaskDialog" class="modal">
+    <form id="editTaskForm">
+      <h3>Edit Task</h3>
+
+      <div class="form-group">
+        <label for="editTaskName">Task Name *</label>
+        <input id="editTaskName" name="name" type="text" required placeholder="e.g., Clean filter">
+      </div>
+
+      <div class="form-group">
+        <label for="editTaskDescription">Description</label>
+        <textarea id="editTaskDescription" name="description" rows="3" placeholder="Optional notes"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="editTaskFrequency">Frequency (days) *</label>
+        <input id="editTaskFrequency" name="frequency_days" type="number" min="1" value="7" required>
+      </div>
+
+      <div class="form-group">
+        <label for="editTaskDueDate">Next Due Date *</label>
+        <input id="editTaskDueDate" name="next_due_date" type="date" required>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="editTaskDelete" class="btn btn-danger">Delete Task</button>
+        <div style="flex: 1;"></div>
+        <button type="button" id="editTaskCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Complete Task Dialog -->
   <dialog id="completeTaskDialog" class="modal">
     <form id="completeTaskForm">
@@ -262,6 +301,6 @@
   <div id="toast" class="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="./js/app.js?v=4"></script>
+  <script src="./js/app.js?v=5"></script>
 </body>
 </html>
