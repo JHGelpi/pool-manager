@@ -1,3 +1,5 @@
+# The correct command is to create the Python migration file directly:
+cat > app/alembic/versions/001_initial_schema.py << 'EOF'
 """initial schema
 
 Revision ID: 001_initial
@@ -10,12 +12,15 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+from passlib.context import CryptContext
 
 # revision identifiers, used by Alembic.
 revision: str = '001_initial'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def upgrade() -> None:
@@ -113,11 +118,9 @@ def upgrade() -> None:
         ('{uuid.uuid4()}', 'temp', 'Water Temperature', '°F', 30, 120, true)
     """)
     
-    # Create default admin user with pre-hashed password (admin123)
-    # Hash generated with: from passlib.context import CryptContext; CryptContext(schemes=["bcrypt"]).hash("admin123")
+    # Create default admin user (admin@example.com / admin123)
     admin_id = uuid.uuid4()
-    # This is bcrypt hash of "admin123"
-    hashed_password = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqRY7TRqOu"
+    hashed_password = pwd_context.hash("admin123")
     op.execute(f"""
         INSERT INTO users (id, email, hashed_password, is_active) 
         VALUES ('{admin_id}', 'admin@example.com', '{hashed_password}', true)
@@ -136,3 +139,10 @@ def downgrade() -> None:
     op.drop_table('chemical_inventory')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+EOF
+
+# Now run the migration inside Docker
+docker-compose exec api alembic upgrade head
+
+# Test the endpoint
+curl http://localhost:8000/readings/types
