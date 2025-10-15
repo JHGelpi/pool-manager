@@ -17,6 +17,7 @@ services:
       retries: 5
     networks:
       - pool_network
+    restart: unless-stopped
 
   api:
     build: .
