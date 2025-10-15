@@ -27,14 +27,17 @@ function showToast(message, duration = 3000) {
 }
 
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
+    // Parse the date string as local date (not UTC)
+    // dateStr format: "YYYY-MM-DD"
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const target = new Date(year, month - 1, day); // month is 0-indexed
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(date);
     target.setHours(0, 0, 0, 0);
-    
+
     const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays === -1) return 'Yesterday';

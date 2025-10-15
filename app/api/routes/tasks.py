@@ -1,6 +1,7 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import List
 from uuid import UUID
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,8 +10,15 @@ from app.database import get_db
 from app.models import User, MaintenanceTask
 from app.schemas import TaskCreate, TaskUpdate, TaskComplete, TaskResponse
 from app.dependencies import get_current_user
+from app.config import settings
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+def get_today_in_timezone() -> date:
+    """Get today's date in the configured timezone"""
+    tz = ZoneInfo(settings.TIMEZONE)
+    return datetime.now(tz).date()
 
 
 @router.get("/", response_model=List[TaskResponse])
@@ -35,7 +43,7 @@ async def create_task(
 ):
     """Create a new maintenance task"""
     # Calculate next_due_date if not provided
-    next_due = task.next_due_date or (date.today() + timedelta(days=task.frequency_days))
+    next_due = task.next_due_date or (get_today_in_timezone() + timedelta(days=task.frequency_days))
     
     db_task = MaintenanceTask(
         **task.model_dump(exclude={"next_due_date"}),
@@ -107,11 +115,12 @@ async def complete_task(
     db_task = result.scalar_one_or_none()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
-    # Update completion info
-    db_task.last_completed_date = date.today()
+
+    # Update completion info using configured timezone
+    today = get_today_in_timezone()
+    db_task.last_completed_date = today
     db_task.last_completion_notes = completion.notes
-    db_task.next_due_date = date.today() + timedelta(days=db_task.frequency_days)
+    db_task.next_due_date = today + timedelta(days=db_task.frequency_days)
     
     await db.commit()
     await db.refresh(db_task)

@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     
     # Scheduler
     SCHEDULER_ENABLED: bool = True
-    
+
+    # Timezone
+    TIMEZONE: str = "America/New_York"  # Default to Eastern Time
+
     class Config:
         env_file = ".env"
         case_sensitive = True
