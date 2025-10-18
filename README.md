@@ -10,6 +10,12 @@ A comprehensive pool maintenance management system built with FastAPI, PostgreSQ
 - **📧 Email Alerts** - Automated reminders for low inventory and due tasks
 - **📱 Mobile-Friendly** - Responsive design works on all devices
 
+## Feature Requests
+[ ] Equipment manager to record and document the equipment you have and when purchased
+[ ] Salinator cleaning task 
+[ ] Input of readings to be in a table for quick data entry
+[ ] Take a photo of chemical reading stick and compare to hex colors of target reading
+
 ## Tech Stack
 
 **Backend:**
