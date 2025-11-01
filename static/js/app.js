@@ -8,6 +8,9 @@ let currentChart = null;
 let allTasks = [];
 let selectedTask = null;
 let taskCompletionHistory = [];
+let currentHistoryPage = 1;
+let historyPageSize = 15;
+let historyTotalPages = 1;
 
 // Utility functions - $ returns ONE element, $$ returns ALL matching elements
 function $(selector) {
@@ -202,9 +205,12 @@ async function selectTask(taskId) {
         selectedTask = null;
         return;
     }
-    
+
     selectedTask = allTasks.find(t => t.id === taskId);
     if (!selectedTask) return;
+
+    // Reset pagination state when selecting a new task
+    currentHistoryPage = 1;
     
     // Show task details
     const detailsCard = $('#taskDetailsCard');
@@ -242,57 +248,113 @@ async function selectTask(taskId) {
     await loadTaskHistory(taskId);
 }
 
-async function loadTaskHistory(taskId) {
+async function loadTaskHistory(taskId, page = 1) {
     const historyCard = $('#taskHistoryCard');
     const historyBody = $('#taskHistoryBody');
     const historyEmpty = $('#taskHistoryEmpty');
-    
+
     if (!historyCard || !historyBody || !historyEmpty) return;
-    
+
     try {
-        // For now, we'll create mock history based on last_completed_date
-        // In a real implementation, you'd fetch from an endpoint like /tasks/{id}/history
-        
-        // Get the full task details to see completion history
-        const task = await api(`/tasks/${taskId}`);
-        
+        // Fetch paginated completion history from API
+        const response = await api(`/tasks/${taskId}/history?page=${page}&page_size=${historyPageSize}`);
+
         historyCard.style.display = 'block';
-        
-        // Create history entries (this is simplified - you'll want a proper history endpoint)
-        const history = [];
-        
-        if (task.last_completed_date) {
-            history.push({
-                date: task.last_completed_date,
-                notes: task.last_completion_notes || 'No notes',
-                days_between: null // First entry
-            });
-        }
-        
-        if (history.length === 0) {
+        currentHistoryPage = response.page;
+        historyTotalPages = response.total_pages;
+
+        if (response.items.length === 0) {
             historyEmpty.style.display = 'block';
             historyBody.innerHTML = '';
         } else {
             historyEmpty.style.display = 'none';
-            historyBody.innerHTML = history.map((entry, index) => {
+
+            // Calculate days between completions
+            const items = response.items;
+            const historyRows = items.map((entry, index) => {
                 let daysBetween = 'N/A';
-                if (entry.days_between !== null) {
-                    daysBetween = `${entry.days_between} days`;
+
+                // Calculate days between this completion and the next one
+                if (index < items.length - 1) {
+                    const currentDate = new Date(entry.completed_date);
+                    const nextDate = new Date(items[index + 1].completed_date);
+                    const diffTime = currentDate - nextDate;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    daysBetween = `${diffDays} days`;
                 }
-                
+
                 return `
                     <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 0.75rem 0.5rem;">${formatDate(entry.date)}</td>
+                        <td style="padding: 0.75rem 0.5rem;">${formatDate(entry.completed_date)}</td>
                         <td style="padding: 0.75rem 0.5rem; color: var(--text-muted);">${daysBetween}</td>
-                        <td style="padding: 0.75rem 0.5rem; color: var(--text-muted);">${escapeHtml(entry.notes)}</td>
+                        <td style="padding: 0.75rem 0.5rem; color: var(--text-muted);">${escapeHtml(entry.notes || 'No notes')}</td>
                     </tr>
                 `;
             }).join('');
+
+            historyBody.innerHTML = historyRows;
         }
-        
+
+        // Update or create pagination controls
+        updateHistoryPagination(taskId, response);
+
     } catch (error) {
         console.error('Failed to load task history:', error);
         showToast('Failed to load history');
+    }
+}
+
+function updateHistoryPagination(taskId, response) {
+    const historyTable = $('#taskHistoryTable');
+    if (!historyTable) return;
+
+    // Remove existing pagination if any
+    let paginationDiv = historyTable.nextElementSibling;
+    if (paginationDiv && paginationDiv.className === 'pagination') {
+        paginationDiv.remove();
+    }
+
+    // Only show pagination if there are multiple pages
+    if (response.total_pages > 1) {
+        const paginationHTML = `
+            <div class="pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding: 0.5rem 0;">
+                <button
+                    id="btnPrevHistory"
+                    class="btn"
+                    ${response.page <= 1 ? 'disabled' : ''}
+                    style="font-size: 0.875rem;">
+                    ← Previous
+                </button>
+                <span style="color: var(--text-muted); font-size: 0.875rem;">
+                    Page ${response.page} of ${response.total_pages} (${response.total} total)
+                </span>
+                <button
+                    id="btnNextHistory"
+                    class="btn"
+                    ${response.page >= response.total_pages ? 'disabled' : ''}
+                    style="font-size: 0.875rem;">
+                    Next →
+                </button>
+            </div>
+        `;
+
+        historyTable.insertAdjacentHTML('afterend', paginationHTML);
+
+        // Add event listeners
+        const btnPrev = $('#btnPrevHistory');
+        const btnNext = $('#btnNextHistory');
+
+        if (btnPrev && !btnPrev.disabled) {
+            btnPrev.addEventListener('click', function() {
+                loadTaskHistory(taskId, response.page - 1);
+            });
+        }
+
+        if (btnNext && !btnNext.disabled) {
+            btnNext.addEventListener('click', function() {
+                loadTaskHistory(taskId, response.page + 1);
+            });
+        }
     }
 }
 

@@ -2,13 +2,17 @@ from datetime import date, timedelta, datetime
 from typing import List
 from uuid import UUID
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from math import ceil
 
 from app.database import get_db
-from app.models import User, MaintenanceTask
-from app.schemas import TaskCreate, TaskUpdate, TaskComplete, TaskResponse
+from app.models import User, MaintenanceTask, TaskCompletionHistory
+from app.schemas import (
+    TaskCreate, TaskUpdate, TaskComplete, TaskResponse,
+    PaginatedTaskCompletionHistoryResponse
+)
 from app.dependencies import get_current_user
 from app.config import settings
 
@@ -121,10 +125,67 @@ async def complete_task(
     db_task.last_completed_date = today
     db_task.last_completion_notes = completion.notes
     db_task.next_due_date = today + timedelta(days=db_task.frequency_days)
-    
+
+    # Create completion history record
+    history_entry = TaskCompletionHistory(
+        task_id=task_id,
+        completed_date=today,
+        notes=completion.notes
+    )
+    db.add(history_entry)
+
     await db.commit()
     await db.refresh(db_task)
     return db_task
+
+
+@router.get("/{task_id}/history", response_model=PaginatedTaskCompletionHistoryResponse)
+async def get_task_completion_history(
+    task_id: UUID,
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(15, ge=1, le=100, description="Items per page"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated completion history for a task"""
+    # Verify task exists and belongs to current user
+    result = await db.execute(
+        select(MaintenanceTask)
+        .where(MaintenanceTask.id == task_id)
+        .where(MaintenanceTask.user_id == current_user.id)
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Get total count
+    count_result = await db.execute(
+        select(func.count(TaskCompletionHistory.id))
+        .where(TaskCompletionHistory.task_id == task_id)
+    )
+    total = count_result.scalar()
+
+    # Calculate pagination
+    total_pages = ceil(total / page_size) if total > 0 else 1
+    offset = (page - 1) * page_size
+
+    # Get paginated history
+    history_result = await db.execute(
+        select(TaskCompletionHistory)
+        .where(TaskCompletionHistory.task_id == task_id)
+        .order_by(TaskCompletionHistory.completed_date.desc())
+        .limit(page_size)
+        .offset(offset)
+    )
+    history_items = history_result.scalars().all()
+
+    return PaginatedTaskCompletionHistoryResponse(
+        items=history_items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages
+    )
 
 
 @router.delete("/{task_id}", status_code=204)

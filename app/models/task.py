@@ -19,3 +19,4 @@ class MaintenanceTask(Base):
     
     # Relationships
     user = relationship("User", back_populates="tasks")
+    completion_history = relationship("TaskCompletionHistory", back_populates="task", cascade="all, delete-orphan", order_by="desc(TaskCompletionHistory.completed_date)")
