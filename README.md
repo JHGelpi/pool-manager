@@ -15,6 +15,15 @@ A comprehensive pool maintenance management system built with FastAPI, PostgreSQ
 - [ ] Salinator cleaning task 
 - [ ] Input of readings to be in a table for quick data entry
 - [ ] Take a photo of chemical reading stick and compare to hex colors of target reading
+- [ ] Reorder the chemistry readings to:
+   1. Total Hardness (scale of 0 to 1000, 250-500 is target range)
+   2. Free Chlorine (scale of 0-10, 1-3 is target range)
+   3. Bromine (scale of 0-20, 2-6 is target range)
+   4. Total Chlorine (scale of 0-10, 1-3 is target range)
+   5. Cyanuric Acid (scale of 0-240, 30-100 is target range)
+   6. Total Alkalinity (scale of 0-240, 80-120 is target range)
+   7. pH (scale of 6.2-9.0, 7.2-7.8 is target range)
+   8. Salt ppm
 
 ## Tech Stack
 
