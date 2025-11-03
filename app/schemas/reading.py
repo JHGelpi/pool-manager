@@ -11,6 +11,7 @@ class ReadingTypeBase(BaseModel):
     unit: Optional[str] = None
     low: Optional[float] = None
     high: Optional[float] = None
+    display_order: Optional[int] = None
 
 
 class ReadingTypeCreate(ReadingTypeBase):
@@ -20,7 +21,7 @@ class ReadingTypeCreate(ReadingTypeBase):
 class ReadingTypeResponse(ReadingTypeBase):
     id: UUID
     is_active: bool
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 

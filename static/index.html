@@ -121,32 +121,47 @@
         <h2>Water Readings</h2>
       </div>
 
+      <!-- Reading Entry Table -->
       <div class="card">
-        <form id="readingForm">
+        <h3 style="margin-bottom: 1rem;">Record Readings</h3>
+        <form id="quickReadingForm">
           <div class="form-group">
-            <label for="readingType">Reading Type</label>
-            <select id="readingType" required>
-              <option value="">Select type...</option>
-            </select>
+            <label for="quickReadingDate">Date</label>
+            <input id="quickReadingDate" type="date" required>
           </div>
 
-          <div class="form-group">
-            <label for="readingValue">Value</label>
-            <input id="readingValue" type="number" step="0.01" placeholder="Enter value" required>
-            <span id="readingUnit" class="unit"></span>
+          <div style="overflow-x: auto;">
+            <table id="quickReadingTable" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--border);">
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Reading</th>
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Target Range</th>
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Value</th>
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.875rem;">Last Reading</th>
+                </tr>
+              </thead>
+              <tbody id="quickReadingTableBody">
+                <!-- Will be populated by JavaScript -->
+              </tbody>
+            </table>
           </div>
 
-          <div class="form-group">
-            <label for="readingDate">Date</label>
-            <input id="readingDate" type="date" required>
-          </div>
-
-          <button type="submit" class="btn btn-primary">Save Reading</button>
+          <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Readings</button>
         </form>
       </div>
 
+      <!-- Chart -->
       <div class="card">
-        <canvas id="readingChart" height="250"></canvas>
+        <h3 style="margin-bottom: 1rem;">History</h3>
+        <div class="form-group">
+          <label for="chartReadingType">Select Reading to View</label>
+          <select id="chartReadingType">
+            <option value="">Select type...</option>
+          </select>
+        </div>
+        <div style="position: relative; height: 250px; max-height: 250px;">
+          <canvas id="readingChart"></canvas>
+        </div>
       </div>
     </section>
 

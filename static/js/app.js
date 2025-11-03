@@ -125,17 +125,20 @@ function switchTab(tabName) {
     
     // Load tab data
     switch(tabName) {
-        case 'tasks': 
-            loadTasks(); 
+        case 'tasks':
+            loadTasks();
             break;
-        case 'inventory': 
-            loadInventory(); 
+        case 'inventory':
+            loadInventory();
             break;
-        case 'readings': 
-            loadReadings(); 
+        case 'readings':
+            // Only load readings if readingTypes are already loaded
+            if (readingTypes && readingTypes.length > 0) {
+                loadReadings();
+            }
             break;
-        case 'settings': 
-            checkHealth(); 
+        case 'settings':
+            checkHealth();
             break;
     }
 }
@@ -521,45 +524,148 @@ async function loadInventory() {
 async function loadReadingTypes() {
     try {
         readingTypes = await api('/readings/types');
-        const select = $('#readingType');
-        
-        if (!select) return;
-        
-        select.innerHTML = '<option value="">Select type...</option>' + 
-            readingTypes.map(type => 
-                `<option value="${type.slug}" data-unit="${type.unit || ''}">${type.name}</option>`
-            ).join('');
-        
-        if (readingTypes.length > 0) {
-            select.value = readingTypes[0].slug;
-            updateReadingUnit();
+
+        // Populate chart dropdown
+        const chartSelect = $('#chartReadingType');
+        if (chartSelect) {
+            chartSelect.innerHTML = '<option value="">Select type...</option>' +
+                readingTypes.map(type =>
+                    `<option value="${type.slug}">${type.name}</option>`
+                ).join('');
+
+            if (readingTypes.length > 0) {
+                chartSelect.value = readingTypes[0].slug;
+            }
         }
+
+        // Populate reading entry table
+        await loadQuickEntryTable();
+
     } catch (error) {
         showToast('Failed to load reading types');
         console.error(error);
     }
 }
 
-function updateReadingUnit() {
-    const select = $('#readingType');
-    if (!select) return;
-    
-    const selectedOption = select.selectedOptions[0];
-    const unit = selectedOption?.dataset.unit || '';
-    const unitSpan = $('#readingUnit');
-    
-    if (unitSpan) {
-        unitSpan.textContent = unit ? `(${unit})` : '';
+async function loadQuickEntryTable() {
+    const tableBody = $('#quickReadingTableBody');
+    if (!tableBody || !readingTypes) return;
+
+    // Get last 7 days of readings for each type
+    const today = getTodayDate();
+    const rows = [];
+
+    for (const type of readingTypes) {
+        try {
+            const readings = await api(`/readings/?slug=${type.slug}&days=7`);
+            const lastReading = readings.length > 0 ? readings[readings.length - 1] : null;
+            const lastValue = lastReading ? lastReading.reading_value : '-';
+            const lastDate = lastReading ? formatDate(lastReading.reading_date) : '-';
+
+            // Determine target range display
+            let targetRange = '-';
+            if (type.low !== null && type.high !== null) {
+                targetRange = `${type.low}-${type.high} ${type.unit || ''}`;
+            } else if (type.unit) {
+                targetRange = type.unit;
+            }
+
+            rows.push(`
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem 0.5rem;">
+                        <strong>${escapeHtml(type.name)}</strong>
+                        ${type.unit ? `<span style="color: var(--text-muted); font-size: 0.875rem;"> (${type.unit})</span>` : ''}
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+                        ${targetRange}
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem;">
+                        <input
+                            type="number"
+                            step="0.01"
+                            class="quick-reading-input"
+                            data-slug="${type.slug}"
+                            placeholder="--"
+                            style="width: 100%; max-width: 120px; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.875rem;"
+                        />
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+                        ${lastValue} ${lastDate !== '-' ? `<span style="color: var(--text-muted);"> (${lastDate})</span>` : ''}
+                    </td>
+                </tr>
+            `);
+        } catch (error) {
+            console.error(`Failed to load readings for ${type.slug}:`, error);
+        }
     }
+
+    tableBody.innerHTML = rows.join('');
+}
+
+async function submitQuickReadings(date) {
+    const inputs = $$('.quick-reading-input');
+    const readings = [];
+
+    // Collect all non-empty readings
+    inputs.forEach(input => {
+        const value = input.value.trim();
+        if (value !== '') {
+            readings.push({
+                reading_type_slug: input.dataset.slug,
+                reading_value: parseFloat(value),
+                reading_date: date
+            });
+        }
+    });
+
+    if (readings.length === 0) {
+        showToast('Please enter at least one reading');
+        return false;
+    }
+
+    // Submit all readings
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const reading of readings) {
+        try {
+            await api('/readings/', {
+                method: 'POST',
+                body: JSON.stringify(reading)
+            });
+            successCount++;
+        } catch (error) {
+            console.error('Failed to save reading:', reading, error);
+            errorCount++;
+        }
+    }
+
+    if (errorCount > 0) {
+        showToast(`⚠ Saved ${successCount} readings, ${errorCount} failed`);
+    } else {
+        showToast(`✓ Saved ${successCount} readings`);
+    }
+
+    // Clear inputs and reload table
+    inputs.forEach(input => input.value = '');
+    await loadQuickEntryTable();
+
+    // Reload chart if a type is selected
+    const chartSelect = $('#chartReadingType');
+    if (chartSelect && chartSelect.value) {
+        await loadReadings();
+    }
+
+    return true;
 }
 
 async function loadReadings() {
-    const select = $('#readingType');
+    const select = $('#chartReadingType');
     if (!select) return;
-    
+
     const slug = select.value;
     if (!slug) return;
-    
+
     try {
         const readings = await api(`/readings/?slug=${slug}&days=90`);
         renderChart(slug, readings);
@@ -572,14 +678,14 @@ async function loadReadings() {
 function renderChart(slug, readings) {
     const canvas = $('#readingChart');
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     const typeInfo = readingTypes.find(t => t.slug === slug) || {};
-    
+
     if (currentChart) {
         currentChart.destroy();
     }
-    
+
     if (readings.length === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#a3acc2';
@@ -588,7 +694,49 @@ function renderChart(slug, readings) {
         ctx.fillText('No readings yet for this type', canvas.width / 2, canvas.height / 2);
         return;
     }
-    
+
+    // Build datasets array - start with the main reading line
+    const datasets = [{
+        label: `${typeInfo.name || slug} ${typeInfo.unit ? '(' + typeInfo.unit + ')' : ''}`,
+        data: readings.map(r => r.reading_value),
+        borderColor: '#4f8cff',
+        backgroundColor: 'rgba(79, 140, 255, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        order: 1
+    }];
+
+    // Add target range lines if they exist
+    if (typeInfo.low !== null && typeInfo.low !== undefined) {
+        datasets.push({
+            label: `Min (${typeInfo.low})`,
+            data: readings.map(() => typeInfo.low),
+            borderColor: 'rgba(255, 193, 7, 0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            order: 2
+        });
+    }
+
+    if (typeInfo.high !== null && typeInfo.high !== undefined) {
+        datasets.push({
+            label: `Max (${typeInfo.high})`,
+            data: readings.map(() => typeInfo.high),
+            borderColor: 'rgba(255, 193, 7, 0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            order: 2
+        });
+    }
+
     currentChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -596,23 +744,14 @@ function renderChart(slug, readings) {
                 const date = new Date(r.reading_date);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }),
-            datasets: [{
-                label: `${typeInfo.name || slug} ${typeInfo.unit ? '(' + typeInfo.unit + ')' : ''}`,
-                data: readings.map(r => r.reading_value),
-                borderColor: '#4f8cff',
-                backgroundColor: 'rgba(79, 140, 255, 0.1)',
-                tension: 0.3,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { 
+                    labels: {
                         color: '#e5ecff',
                         font: { size: 12 }
                     }
@@ -620,14 +759,14 @@ function renderChart(slug, readings) {
             },
             scales: {
                 x: {
-                    ticks: { 
+                    ticks: {
                         color: '#a3acc2',
                         font: { size: 11 }
                     },
                     grid: { color: 'rgba(255, 255, 255, 0.06)' }
                 },
                 y: {
-                    ticks: { 
+                    ticks: {
                         color: '#a3acc2',
                         font: { size: 11 }
                     },
@@ -903,49 +1042,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Reading form
-    const readingTypeSelect = $('#readingType');
-    if (readingTypeSelect) {
-        readingTypeSelect.addEventListener('change', function() {
-            updateReadingUnit();
-            loadReadings();
-        });
+    // Quick reading form
+    const quickReadingDate = $('#quickReadingDate');
+    if (quickReadingDate) {
+        quickReadingDate.value = getTodayDate();
     }
-    
-    const readingDate = $('#readingDate');
-    if (readingDate) {
-        readingDate.value = getTodayDate();
-    }
-    
-    const readingForm = $('#readingForm');
-    if (readingForm) {
-        readingForm.addEventListener('submit', async function(e) {
+
+    const quickReadingForm = $('#quickReadingForm');
+    if (quickReadingForm) {
+        quickReadingForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const typeSelect = $('#readingType');
-            const valueInput = $('#readingValue');
-            const dateInput = $('#readingDate');
-            
-            if (!typeSelect.value) {
-                showToast('Please select a reading type');
+
+            const dateInput = $('#quickReadingDate');
+            if (!dateInput.value) {
+                showToast('Please select a date');
                 return;
             }
-            
-            const data = {
-                reading_type_slug: typeSelect.value,
-                reading_value: parseFloat(valueInput.value),
-                reading_date: dateInput.value
-            };
-            
-            try {
-                await api('/readings/', { method: 'POST', body: JSON.stringify(data) });
-                showToast('✓ Reading saved');
-                valueInput.value = '';
-                loadReadings();
-            } catch (error) {
-                showToast('Failed to save reading');
-                console.error(error);
-            }
+
+            await submitQuickReadings(dateInput.value);
+        });
+    }
+
+    // Chart reading type dropdown
+    const chartReadingType = $('#chartReadingType');
+    if (chartReadingType) {
+        chartReadingType.addEventListener('change', function() {
+            loadReadings();
         });
     }
     
@@ -955,11 +1077,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Loading reading types...');
     loadReadingTypes().then(function() {
+        console.log('Reading types loaded');
         if (currentTab === 'readings') {
+            console.log('Loading readings for current tab');
             loadReadings();
         }
     });
-    
+
     console.log('Switching to tasks tab...');
     switchTab('tasks');
 });

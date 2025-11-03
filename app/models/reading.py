@@ -8,15 +8,16 @@ from app.database import Base
 
 class ReadingType(Base):
     __tablename__ = "reading_types"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=False)
     unit = Column(String, nullable=True)
-    low = Column(Float, nullable=True)  # Recommended low range
-    high = Column(Float, nullable=True)  # Recommended high range
+    low = Column(Float, nullable=True)  # Recommended low range (target minimum)
+    high = Column(Float, nullable=True)  # Recommended high range (target maximum)
+    display_order = Column(sa.Integer, nullable=True, index=True)  # Order for display
     is_active = Column(Boolean, default=True, nullable=False)
-    
+
     # Relationships
     readings = relationship("Reading", back_populates="reading_type", cascade="all, delete-orphan")
 

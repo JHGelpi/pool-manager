@@ -21,11 +21,11 @@ router = APIRouter(prefix="/readings", tags=["readings"])
 async def list_reading_types(
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all active reading types"""
+    """Get all active reading types ordered by display_order"""
     result = await db.execute(
         select(ReadingType)
         .where(ReadingType.is_active == True)
-        .order_by(ReadingType.slug)
+        .order_by(ReadingType.display_order.asc().nullslast(), ReadingType.name)
     )
     return result.scalars().all()
 
