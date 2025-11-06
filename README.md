@@ -12,10 +12,10 @@ A comprehensive pool maintenance management system built with FastAPI, PostgreSQ
 
 ## Feature Requests
 - [ ] Equipment manager to record and document the equipment you have and when purchased
-- [ ] Salinator cleaning task 
-- [ ] Input of readings to be in a table for quick data entry
+- [X] Salinator cleaning task 
+- [X] Input of readings to be in a table for quick data entry
 - [ ] Take a photo of chemical reading stick and compare to hex colors of target reading
-- [ ] Reorder the chemistry readings to:
+- [X] Reorder the chemistry readings to:
    1. Total Hardness (scale of 0 to 1000, 250-500 is target range)
    2. Free Chlorine (scale of 0-10, 1-3 is target range)
    3. Bromine (scale of 0-20, 2-6 is target range)
